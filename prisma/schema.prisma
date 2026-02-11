@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum FileKind {
+  PRESENTATION
+  SYLLABUS
+  COLLOQUIUM
+  FINAL_EXAM
+  OTHER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  passHash  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // gələcək üçün genişlənmə
+  profile   StudentProfile?
+  attempts  QuizAttempt[]
+}
+
+model StudentProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  fullName  String?
+  email     String?
+  group     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topics Topic[]
+}
+
+model Topic {
+  id        String   @id @default(cuid())
+  subjectId String
+  title     String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  files   File[]
+}
+
+model File {
+  id        String   @id @default(cuid())
+  topicId   String?
+  kind      FileKind @default(OTHER)
+  title     String
+  original  String
+  stored    String   // server diskdə saxlanan ad (unique)
+  mime      String
+  size      Int
+  createdAt DateTime @default(now())
+
+  topic Topic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+}
+
+//
+// QUIZ (indi istifadə etməyəcəyik, amma schema hazır qalır)
+//
+
+model Quiz {
+  id        String   @id @default(cuid())
+  subjectId String?
+  title     String
+  createdAt DateTime @default(now())
+
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+}
+
+model QuizQuestion {
+  id      String @id @default(cuid())
+  quizId  String
+  text    String
+  order   Int    @default(0)
+
+  quiz    Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options QuizOption[]
+}
+
+model QuizOption {
+  id         String @id @default(cuid())
+  questionId String
+  text       String
+  isCorrect  Boolean @default(false)
+
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  quizId    String
+  userId    String
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
